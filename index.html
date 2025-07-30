@@ -2,40 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Snake Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <div id="ui-header">
-            <div id="score">
-                <span>🐍</span> 0
+    <div id="game-wrapper">
+        <div id="game-container">
+            <div id="ui-header">
+                <div id="score">
+                    <span>🐍</span> 0
+                </div>
+                <div id="controls">
+                    <button class="btn difficulty-btn active" data-difficulty="medium">Medium</button>
+                    <button class="btn difficulty-btn" data-difficulty="easy">Easy</button>
+                    <button class="btn difficulty-btn" data-difficulty="hard">Hard</button>
+                    <button id="border-toggle-btn" class="btn">Borders</button>
+                </div>
+                <button id="fullscreen-btn" class="btn">Fullscreen</button>
             </div>
-            <div id="controls">
-                <button class="btn difficulty-btn active" data-difficulty="medium">Medium</button>
-                <button class="btn difficulty-btn" data-difficulty="easy">Easy</button>
-                <button class="btn difficulty-btn" data-difficulty="hard">Hard</button>
-                <button id="border-toggle-btn" class="btn">Borders</button>
+            <div id="game-board-wrapper">
+                <div id="super-snake-timer-container"></div>
+                <canvas id="game-board"></canvas>
+                <div id="start-message" class="message-overlay">
+                    <p>Press an arrow key or swipe to start!</p>
+                </div>
+                <div id="game-over-message" class="message-overlay">
+                    <h2>Game Over!</h2>
+                    <p id="restart-hint">Press an arrow key or swipe to restart</p>
+                </div>
+                <div id="pause-message" class="message-overlay">
+                    <h2>Paused</h2>
+                </div>
             </div>
-        </div>
-        <div id="game-board-wrapper">
-            <div id="super-snake-timer-container"></div>
-            <canvas id="game-board"></canvas>
-            <div id="start-message" class="message-overlay">
-                <p>Select difficulty, then press an arrow key to start!</p>
+            <div id="ui-footer">
+                <div id="last-score">⏱️ Last: 0</div>
+                <div id="high-score">👑 High: 0</div>
             </div>
-            <div id="game-over-message" class="message-overlay">
-                <h2>Game Over!</h2>
-                <p id="restart-hint">Press any arrow key to restart</p>
-            </div>
-            <div id="pause-message" class="message-overlay">
-                <h2>Paused</h2>
-            </div>
-        </div>
-        <div id="ui-footer">
-            <div id="last-score">⏱️ Last: 0</div>
-            <div id="high-score">👑 High: 0</div>
         </div>
     </div>
     <script src="script.js"></script>

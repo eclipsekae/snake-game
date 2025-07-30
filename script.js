@@ -5,11 +5,12 @@ const highScoreDisplay = document.getElementById('high-score');
 const lastScoreDisplay = document.getElementById('last-score');
 const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 const borderToggleButton = document.getElementById('border-toggle-btn');
+const fullscreenButton = document.getElementById('fullscreen-btn');
 const startMessage = document.getElementById('start-message');
 const gameOverMessage = document.getElementById('game-over-message');
 const restartHint = document.getElementById('restart-hint');
 const timerContainer = document.getElementById('super-snake-timer-container');
-
+const gameContainer = document.getElementById('game-container');
 
 const gridSize = 20;
 gameBoard.width = 400;
@@ -19,9 +20,34 @@ const pauseMessage = document.getElementById('pause-message');
 
 // Game state variables
 let snake, food, superFood, score, highScore, lastScore, direction, nextDirection, gameSpeed, gameLoopInterval, animationFrameId, isGameOver, isPaused, canRestart, borderIsSolid, isSuperSnake, superSnakeTimer, textEffects, gameTick, collisionFlashInterval, pauseStartTime, isFlashing = false, showHeadMark = false, isGrowingInitially = false;
+let touchStartX = 0;
+let touchStartY = 0;
 
 const difficulties = { easy: 150, medium: 100, hard: 70 };
 let currentDifficulty = 'medium';
+
+// --- Device Detection ---
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// --- Game Scaling ---
+function scaleGame() {
+    if (isMobile()) {
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const scale = Math.min(viewportWidth / containerWidth, viewportHeight / containerHeight) * 0.95;
+        gameContainer.style.transform = `scale(${scale})`;
+        gameContainer.classList.add('mobile-scale');
+    } else {
+        gameContainer.style.transform = 'scale(1)';
+        gameContainer.classList.remove('mobile-scale');
+    }
+}
+
 
 // --- Game Flow Functions ---
 
@@ -53,6 +79,18 @@ function prepareGame() {
     ];
     startMessage.classList.add('visible');
     gameOverMessage.classList.remove('visible');
+
+    // Customize splash text
+    const startText = startMessage.querySelector('p');
+    const restartText = restartHint;
+    if (isMobile()) {
+        startText.textContent = 'Swipe to start!';
+        restartText.textContent = 'Swipe to restart';
+    } else {
+        startText.textContent = 'Press an arrow key to start!';
+        restartText.textContent = 'Press any arrow key to restart';
+    }
+
     loadScores();
     draw();
 }
@@ -138,30 +176,28 @@ function resumeGame() {
     isPaused = false;
     const pauseDuration = Date.now() - pauseStartTime;
 
-    // Recalculate remaining time for Super Snake and set new timeout
     if (isSuperSnake && superSnakeTimer) {
         const timeElapsedBeforePause = pauseStartTime - superSnakeTimer.startTime;
         const remainingDuration = superSnakeTimer.duration - timeElapsedBeforePause;
 
         if (remainingDuration > 0) {
-            superSnakeTimer.startTime += pauseDuration; // Adjust start time for visual continuity
+            superSnakeTimer.startTime += pauseDuration;
             superSnakeTimer.timer = setTimeout(() => {
                 isSuperSnake = false;
                 superSnakeTimer = null;
             }, remainingDuration);
         } else {
-            isSuperSnake = false; // Timer ran out during pause
+            isSuperSnake = false;
             superSnakeTimer = null;
         }
     }
 
-    // Recalculate remaining time for Super Food and set new timeout
     if (superFood) {
         const timeElapsedBeforePause = pauseStartTime - superFood.createdAt;
         const remainingDuration = 8000 - timeElapsedBeforePause;
 
         if (remainingDuration > 0) {
-            superFood.createdAt += pauseDuration; // Adjust creation time for visual continuity
+            superFood.createdAt += pauseDuration;
             superFood.disappearTimer = setTimeout(() => {
                 if (superFood) superFood = null;
             }, remainingDuration);
@@ -201,8 +237,8 @@ function update() {
     snake.unshift(head);
 
     if (isGrowingInitially) {
-        if (snake.length < 3) { // Grow to initial length of 3
-            // Don't pop, just grow
+        if (snake.length < 3) {
+            // Grow to initial length
         } else {
             isGrowingInitially = false;
         }
@@ -243,8 +279,6 @@ function interpolateColor(hex1, hex2, factor) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-
-
 function draw() {
     ctx.clearRect(0, 0, gameBoard.width, gameBoard.height);
 
@@ -256,78 +290,55 @@ function draw() {
         currentTime = pauseStartTime;
     }
 
-    // --- Super Mode Visuals Calculation & Timer Drawing ---
     if (isSuperSnake && superSnakeTimer) {
         const timeElapsed = currentTime - superSnakeTimer.startTime;
         const timeRemaining = superSnakeTimer.duration - timeElapsed;
 
-        // Calculate transition factor for fade-in/out
         if (timeElapsed < 500) {
             transitionFactor = timeElapsed / 500;
         } else if (timeRemaining < 1000) {
-            transitionFactor = timeRemaining / 1000;
+            transitionFactor = Math.max(0, timeRemaining / 1000);
         }
-        transitionFactor = Math.max(0, transitionFactor);
 
-        // Calculate shared glow
-        const glowPulseFactor = (Math.sin(currentTime / 200) + 1) / 2; // Range [0, 1]
+        const glowPulseFactor = (Math.sin(currentTime / 200) + 1) / 2;
         superSnakeGlow = (5 + (glowPulseFactor * 5)) * transitionFactor;
 
-        // --- Timer Drawing ---
-        const maxVisualTimerDashes = 200; // Full width of playfield (400px / (1px dash + 1px gap))
-        const linearDurationMs = 5000; // First 5 seconds are linear
-        const dashValueMs = 50; // Each dash represents 50ms
-        const logShift = linearDurationMs * 2; // Shift constant for linearity at the start of the log segment, adjusted for smoother transition
+        const maxVisualTimerDashes = 200;
+        const linearDurationMs = 5000;
+        const dashValueMs = 50;
+        const logShift = linearDurationMs * 2;
 
         let dashesToDraw;
-
-        // Cap timeRemaining for visual scaling to prevent overload
-        const visualTimeRemaining = Math.min(timeRemaining, 100000); // Max 100 seconds represented visually
+        const visualTimeRemaining = Math.min(timeRemaining, 100000);
 
         if (visualTimeRemaining <= linearDurationMs) {
-            // Linear scaling for the first part
             dashesToDraw = Math.ceil(visualTimeRemaining / dashValueMs);
         } else {
-            // Logarithmic scaling for time above the linear threshold
-            const linearDashesCount = linearDurationMs / dashValueMs; // Dashes covered by the linear part (100 dashes)
-            const timeInLogarithmicSegment = visualTimeRemaining - linearDurationMs; // Time remaining in the logarithmic range
-            const logRangeMs = (100000) - linearDurationMs; // The total time range covered by the logarithmic part (95000ms)
-            const logDashesCount = maxVisualTimerDashes - linearDashesCount; // Dashes covered by the logarithmic part (100 dashes)
-
+            const linearDashesCount = linearDurationMs / dashValueMs;
+            const timeInLogarithmicSegment = visualTimeRemaining - linearDurationMs;
+            const logRangeMs = (100000) - linearDurationMs;
+            const logDashesCount = maxVisualTimerDashes - linearDashesCount;
             const normalizedLogTime = (Math.log(timeInLogarithmicSegment + logShift) - Math.log(logShift)) / (Math.log(logRangeMs + logShift) - Math.log(logShift));
             const dashesFromLog = normalizedLogTime * logDashesCount;
             dashesToDraw = Math.ceil(linearDashesCount + dashesFromLog);
         }
 
-        dashesToDraw = Math.max(0, Math.min(dashesToDraw, maxVisualTimerDashes)); // Ensure it's within bounds
+        dashesToDraw = Math.max(0, Math.min(dashesToDraw, maxVisualTimerDashes));
 
         timerContainer.innerHTML = '';
         for (let i = 0; i < dashesToDraw; i++) {
             const dash = document.createElement('div');
             dash.classList.add('timer-dash');
-
-            let dashColor;
-            if (timeRemaining < 1500) {
-                const fadeToRedFactor = 1 - Math.max(0, (timeRemaining - 1000) / 500);
-                dashColor = interpolateColor('#FF00FF', '#FF0000', fadeToRedFactor);
-            } else {
-                dashColor = '#FF00FF'; // Purple
-            }
-
-            if (i === dashesToDraw - 1) {
-                dashColor = '#FFFF00'; // Last dash is always yellow
-            }
-
+            let dashColor = (timeRemaining < 1500) ? interpolateColor('#FF00FF', '#FF0000', 1 - Math.max(0, (timeRemaining - 1000) / 500)) : '#FF00FF';
+            if (i === dashesToDraw - 1) dashColor = '#FFFF00';
             dash.style.backgroundColor = dashColor;
             dash.style.boxShadow = `0 0 ${superSnakeGlow}px ${dashColor}`;
             timerContainer.appendChild(dash);
         }
     } else {
-        timerContainer.innerHTML = ''; // Clear timer when not active
+        timerContainer.innerHTML = '';
     }
 
-    // --- Snake Drawing ---
-    const isFinalFrame = isGameOver && gameOverMessage.classList.contains('visible');
     const normalHeadColor = '#00AA00';
     const superHeadColor = '#FFFF00';
     const normalBodyColor = '#00FF00';
@@ -340,19 +351,12 @@ function draw() {
 
         if (isSuperSnake && superSnakeTimer) {
             glow = superSnakeGlow;
-            
-            let baseColor = isHead ?
-                interpolateColor(normalHeadColor, superHeadColor, transitionFactor) :
-                interpolateColor(normalBodyColor, superBodyColor, transitionFactor);
-
+            let baseColor = isHead ? interpolateColor(normalHeadColor, superHeadColor, transitionFactor) : interpolateColor(normalBodyColor, superBodyColor, transitionFactor);
             if (!isHead) {
-                const bodyPulseFactor = (Math.sin(currentTime / 150) + 1) / 2 * 0.1 + 0.9; // Range [0.9, 1]
+                const bodyPulseFactor = (Math.sin(currentTime / 150) + 1) / 2 * 0.1 + 0.9;
                 const rgb = baseColor.match(/\d+/g);
                 if (rgb) {
-                    const r = parseInt(rgb[0]) * bodyPulseFactor;
-                    const g = parseInt(rgb[1]) * bodyPulseFactor;
-                    const b = parseInt(rgb[2]) * bodyPulseFactor;
-                    color = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+                    color = `rgb(${Math.round(parseInt(rgb[0]) * bodyPulseFactor)}, ${Math.round(parseInt(rgb[1]) * bodyPulseFactor)}, ${Math.round(parseInt(rgb[2]) * bodyPulseFactor)})`;
                 } else {
                     color = baseColor;
                 }
@@ -362,16 +366,11 @@ function draw() {
         } else {
             color = isHead ? normalHeadColor : normalBodyColor;
         }
-        
-        if (isFlashing) {
-            color = '#fff';
-        }
-
+        if (isFlashing) color = '#fff';
         drawRect(segment.x, segment.y, color, glow, color);
     });
 
-    // --- Final Frame & Food Drawing ---
-    if (isFinalFrame || showHeadMark) {
+    if (isGameOver && (showHeadMark || gameOverMessage.classList.contains('visible'))) {
         const head = snake[0];
         const headDrawPos = { x: head.x, y: head.y };
         if (borderIsSolid) {
@@ -392,7 +391,7 @@ function draw() {
     if (superFood) {
         const age = currentTime - superFood.createdAt;
         let alpha = 1.0;
-        const glow = Math.sin(currentTime / 150) * 5 + 10; // Time-based pulse
+        const glow = Math.sin(currentTime / 150) * 5 + 10;
         const fadeStartTime = 5000;
         const fadeDuration = 3000;
         if (age > fadeStartTime) {
@@ -475,10 +474,8 @@ function activateSuperSnake() {
     clearTimeout(superSnakeTimer?.timer);
 
     if (isSuperSnake && superSnakeTimer) {
-        // Already in super mode, extend the duration
         superSnakeTimer.duration += 5000;
     } else {
-        // First time activation
         isSuperSnake = true;
         superSnakeTimer = {
             startTime: Date.now(),
@@ -495,7 +492,7 @@ function activateSuperSnake() {
     }, newRemainingTime);
 }
 
-// --- High Score --- 
+// --- High Score ---
 function loadScores() {
     highScore = localStorage.getItem('snakeHighScore') || 0;
     lastScore = localStorage.getItem('snakeLastScore') || 0;
@@ -526,17 +523,8 @@ function updateScoreDisplays() {
 
 // --- Event Handlers & UI ---
 
-function handleKeyPress(event) {
-    if (event.key === 'p' || event.key === 'P') {
-        togglePause();
-        return;
-    }
-
-    const keyMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
-    const requestedDir = keyMap[event.key];
+function handleDirectionChange(requestedDir) {
     if (!requestedDir) return;
-
-    event.preventDefault();
 
     if (isPaused) {
         resumeGame();
@@ -561,11 +549,67 @@ function handleKeyPress(event) {
     }
 }
 
+function handleKeyPress(event) {
+    if (event.key === 'p' || event.key === 'P') {
+        togglePause();
+        return;
+    }
+
+    const keyMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    const requestedDir = keyMap[event.key];
+    if (requestedDir) {
+        event.preventDefault();
+        handleDirectionChange(requestedDir);
+    }
+}
+
+function handleTouchStart(event) {
+    event.preventDefault();
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+}
+
+function handleTouchEnd(event) {
+    event.preventDefault();
+    const touchEndX = event.changedTouches[0].clientX;
+    const touchEndY = event.changedTouches[0].clientY;
+
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    const absDiffX = Math.abs(diffX);
+    const absDiffY = Math.abs(diffY);
+
+    if (absDiffX > 30 || absDiffY > 30) { // Swipe threshold
+        if (absDiffX > absDiffY) {
+            handleDirectionChange(diffX > 0 ? 'right' : 'left');
+        } else {
+            handleDirectionChange(diffY > 0 ? 'down' : 'up');
+        }
+    }
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+        fullscreenButton.textContent = 'Exit Fullscreen';
+    } else {
+        document.exitFullscreen();
+        fullscreenButton.textContent = 'Fullscreen';
+    }
+}
+
 function randomGridPos() {
     return Math.floor(Math.random() * (gameBoard.width / gridSize));
 }
 
+// --- Event Listeners ---
 document.addEventListener('keydown', handleKeyPress);
+gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
+gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
+gameBoard.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
 
 borderToggleButton.addEventListener('click', (e) => {
     borderIsSolid = !borderIsSolid;
@@ -583,5 +627,19 @@ difficultyButtons.forEach(button => {
     });
 });
 
+fullscreenButton.addEventListener('click', (e) => {
+    toggleFullscreen();
+    e.target.blur();
+});
+
+window.addEventListener('resize', scaleGame);
+document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+        fullscreenButton.textContent = 'Fullscreen';
+    }
+});
+
+
 // --- Initial Setup ---
+scaleGame();
 prepareGame();
