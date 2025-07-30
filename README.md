@@ -2,6 +2,10 @@
 
 Get ready for a super fun adventure with our slithery snake friend! 🤩
 
+## 🚀 Play Now! 🚀
+
+**[Click here to play the game!](https://eclipsekae.github.io/snake-game/)**
+
 ## ✨ Awesome Features ✨
 
 *   Classic snake fun! 🍎
