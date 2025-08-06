@@ -11,6 +11,9 @@ const gameOverMessage = document.getElementById('game-over-message');
 const restartHint = document.getElementById('restart-hint');
 const timerContainer = document.getElementById('super-snake-timer-container');
 const gameContainer = document.getElementById('game-container');
+const touchControls = document.getElementById('touch-controls');
+const touchLeft = document.getElementById('touch-left');
+const touchRight = document.getElementById('touch-right');
 
 const gridSize = 20;
 gameBoard.width = 400;
@@ -34,17 +37,19 @@ function isMobile() {
 // --- Game Scaling ---
 function scaleGame() {
     if (isMobile()) {
+        const gameWrapper = document.getElementById('game-wrapper');
+        const gameContainer = document.getElementById('game-container');
         const containerWidth = gameContainer.offsetWidth;
         const containerHeight = gameContainer.offsetHeight;
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+        const wrapperWidth = gameWrapper.offsetWidth;
+        const wrapperHeight = gameWrapper.offsetHeight;
 
-        const scale = Math.min(viewportWidth / containerWidth, viewportHeight / containerHeight) * 0.95;
+        const scale = Math.min(wrapperWidth / containerWidth, wrapperHeight / containerHeight) * 0.95;
+
         gameContainer.style.transform = `scale(${scale})`;
-        gameContainer.classList.add('mobile-scale');
+        gameContainer.style.transformOrigin = 'center center';
     } else {
         gameContainer.style.transform = 'scale(1)';
-        gameContainer.classList.remove('mobile-scale');
     }
 }
 
@@ -84,11 +89,14 @@ function prepareGame() {
     const startText = startMessage.querySelector('p');
     const restartText = restartHint;
     if (isMobile()) {
-        startText.textContent = 'Swipe to start!';
-        restartText.textContent = 'Swipe to restart';
+        startText.innerHTML = 'Tap left/right to turn.<br>Swipe to start.';
+        restartText.textContent = 'Tap or swipe to restart';
+        touchControls.classList.add('mobile-active');
+        touchControls.classList.remove('fade-out');
     } else {
         startText.textContent = 'Press an arrow key to start!';
         restartText.textContent = 'Press any arrow key to restart';
+        touchControls.classList.remove('mobile-active');
     }
 
     loadScores();
@@ -107,6 +115,9 @@ function startGame(startDirection) {
     canRestart = false;
     startMessage.classList.remove('visible');
     gameOverMessage.classList.remove('visible');
+    if (isMobile()) {
+        touchControls.classList.add('fade-out');
+    }
     createFood();
     gameLoopInterval = setInterval(gameLoop, gameSpeed);
     animationFrameId = requestAnimationFrame(drawLoop);
@@ -134,6 +145,9 @@ function gameOver() {
             setTimeout(() => {
                 gameBoard.classList.add('blurred');
                 gameOverMessage.classList.add('visible');
+                if (isMobile()) {
+                    touchControls.classList.remove('fade-out');
+                }
                 setTimeout(() => {
                     restartHint.classList.add('visible');
                     canRestart = true;
@@ -549,6 +563,20 @@ function handleDirectionChange(requestedDir) {
     }
 }
 
+function handleTapTurn(turnDirection) {
+    if (isGameOver || isPaused) return;
+
+    const directionMap = {
+        up: { left: 'left', right: 'right' },
+        down: { left: 'right', right: 'left' },
+        left: { left: 'down', right: 'up' },
+        right: { left: 'up', right: 'down' },
+    };
+
+    const newDirection = directionMap[direction][turnDirection];
+    handleDirectionChange(newDirection);
+}
+
 function handleKeyPress(event) {
     if (event.key === 'p' || event.key === 'P') {
         togglePause();
@@ -610,6 +638,9 @@ gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
 gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
 gameBoard.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
+touchLeft.addEventListener('click', () => handleTapTurn('left'));
+touchRight.addEventListener('click', () => handleTapTurn('right'));
+
 
 borderToggleButton.addEventListener('click', (e) => {
     borderIsSolid = !borderIsSolid;
@@ -633,6 +664,11 @@ fullscreenButton.addEventListener('click', (e) => {
 });
 
 window.addEventListener('resize', scaleGame);
+window.addEventListener('blur', () => {
+    if (!isGameOver && !isPaused) {
+        togglePause();
+    }
+});
 document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement) {
         fullscreenButton.textContent = 'Fullscreen';
@@ -641,5 +677,7 @@ document.addEventListener('fullscreenchange', () => {
 
 
 // --- Initial Setup ---
-scaleGame();
-prepareGame();
+document.addEventListener('DOMContentLoaded', () => {
+    scaleGame();
+    prepareGame();
+});

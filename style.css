@@ -170,13 +170,20 @@ canvas.blurred {
     opacity: 1;
 }
 
-#ui-footer {
+#ui-footer-container {
     width: 404px;
+    position: relative;
+}
+
+#ui-footer {
+    width: 100%;
     box-sizing: border-box;
     display: flex;
     justify-content: space-between;
     margin-top: 1rem;
     font-size: 1.2rem;
+    position: relative;
+    z-index: 1;
 }
 
 #high-score {
@@ -187,3 +194,52 @@ canvas.blurred {
     color: #aaa;
 }
 
+
+
+/* Touch Controls */
+#touch-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 150%; /* Extend below the footer */
+    display: none;
+    z-index: 2;
+}
+
+.touch-zone {
+    position: absolute;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s, opacity 1s;
+    opacity: 1;
+    border-radius: 10px;
+}
+
+#touch-left { left: 0; }
+#touch-right { right: 0; }
+
+.touch-arrow {
+    font-size: 3rem;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 0.3s;
+}
+
+.touch-zone:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.touch-zone.fade-out {
+    opacity: 0.2;
+}
+
+/* Only show touch controls on mobile */
+@media (hover: none) and (pointer: coarse) {
+    #touch-controls.mobile-active {
+        display: block; /* Use block instead of flex */
+    }
+}

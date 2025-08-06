@@ -1,0 +1,20 @@
+{
+  // A crucial safety net. Always enabled.
+  "checkpointing": {"enabled": true},
+
+  // Automatically applies context from project files, respecting .gitignore.
+  "autoContext": true,
+
+  // Prevents the CLI from spamming you with "Do you want to continue?" prompts.
+  "autoAccept": true,
+
+  // A higher value makes the output more creative and diverse.
+  // A lower value (0.1-0.5) makes the output more deterministic and reliable for code.
+  "temperature": 0.3,
+
+  // Defines the default directory for files, tools, and memory
+  "contextDir": ".gemini",
+
+  // You can set default tools here, but it's often better to let the AI decide.
+  "defaultTools": ["Shell", "ReadFile", "WriteFile"]
+}
